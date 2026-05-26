@@ -1,1 +1,15 @@
-# qa_guru_homework
+# QA_GURU HOMEWORKS
+
+## Описание
+
+**Проект для сдачи дз на курсе**
+
+``` python
+python3 -m pytest
+```
+
+- пункт 1 
+- пункт 2
+
+1. пункт 1
+2. пункт 2
