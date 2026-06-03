@@ -1,6 +1,32 @@
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+URL = "https://qa-guru.github.io/one-page-form/text-box.html"
+
+
+def open_page(driver):
+    driver.get(URL)
+    driver.maximize_window()
+
+
+def fill_form(driver, name, email, current, permanent):
+    driver.find_element(By.ID, "userName").send_keys(name)
+    driver.find_element(By.ID, "userEmail").send_keys(email)
+    driver.find_element(By.ID, "currentAddress").send_keys(current)
+    driver.find_element(By.ID, "permanentAddress").send_keys(permanent)
+    driver.find_element(By.ID, "submit").click()
+
+
+def get_output(driver):
+    WebDriverWait(driver, 5).until(
+        EC.visibility_of_element_located((By.ID, "output"))
+    )
+    return driver.find_element(By.ID, "output").text
+
 
 # =========================
 # ПОЗИТИВНЫЙ ТЕСТ
@@ -9,200 +35,275 @@ from selenium.webdriver.common.by import By
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    # Full Name
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("Иван Иванов")
+    fill_form(
+        driver,
+        "Иван Иванов",
+        "ivan@example.com",
+        "Москва",
+        "Санкт-Петербург"
+    )
 
-    # Email
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("ivan@example.com")
+    result = get_output(driver)
 
-    # Current Address
-    current_address = driver.find_element(By.ID, "currentAddress")
-    current_address.send_keys("Москва")
+    assert "Иван Иванов" in result
+    assert "ivan@example.com" in result
+    assert "Москва" in result
+    assert "Санкт-Петербург" in result
 
-    # Permanent Address
-    permanent_address = driver.find_element(By.ID, "permanentAddress")
-    permanent_address.send_keys("Санкт-Петербург")
-
-    # Submit
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
-
-    time.sleep(2)
-
-    # Проверка результата
-    result_box = driver.find_element(By.ID, "output")
-
-    assert "Иван Иванов" in result_box.text
-    assert "ivan@example.com" in result_box.text
-    assert "Москва" in result_box.text
-    assert "Санкт-Петербург" in result_box.text
-
-    print("Позитивный тест успешно пройден!")
+    print("Позитивный тест пройден!")
 
 finally:
     driver.quit()
 
 
 # =========================
-# НЕГАТИВНЫЙ ТЕСТ
-# EMAIL БЕЗ @
+# ПУСТОЙ CURRENT ADDRESS
 # =========================
 
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("Петр Петров")
+    fill_form(
+        driver,
+        "User Test",
+        "test@test.com",
+        "",
+        "Казань"
+    )
 
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("petryandex.ru")
+    result = get_output(driver)
 
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
+    assert "Казань" in result
 
-    time.sleep(2)
-
-    result_box = driver.find_element(By.ID, "output")
-
-    # Форма не должна отправиться
-    assert result_box.text == ""
-
-    print("Негативный тест без @ успешно пройден!")
+    print("Пустой current address пройден!")
 
 finally:
     driver.quit()
 
 
 # =========================
-# НЕГАТИВНЫЙ ТЕСТ
+# ДЛИННЫЙ CURRENT ADDRESS
+# =========================
+
+driver = webdriver.Chrome()
+
+try:
+    open_page(driver)
+
+    long_address = "Москва " * 50
+
+    fill_form(
+        driver,
+        "Long User",
+        "long@test.com",
+        long_address,
+        "Самара"
+    )
+
+    result = get_output(driver)
+
+    assert long_address in result
+
+    print("Длинный address тест пройден!")
+
+finally:
+    driver.quit()
+
+
+# =========================
+# СПЕЦСИМВОЛЫ В ADDRESS
+# =========================
+
+driver = webdriver.Chrome()
+
+try:
+    open_page(driver)
+
+    special = "!@#$%^&*()_+"
+
+    fill_form(
+        driver,
+        "Special User",
+        "special@test.com",
+        special,
+        special
+    )
+
+    result = get_output(driver)
+
+    assert special in result
+
+    print("Спецсимволы в address пройдены!")
+
+finally:
+    driver.quit()
+
+
+# =========================
+# ОДИНАКОВЫЕ АДРЕСА
+# =========================
+
+driver = webdriver.Chrome()
+
+try:
+    open_page(driver)
+
+    address = "Новосибирск"
+
+    fill_form(
+        driver,
+        "Same User",
+        "same@test.com",
+        address,
+        address
+    )
+
+    result = get_output(driver)
+
+    assert result.count(address) == 2
+
+    print("Одинаковые address пройдены!")
+
+finally:
+    driver.quit()
+
+
+# =========================
+# НЕГАТИВНЫЙ EMAIL (БЕЗ @)
+# =========================
+
+driver = webdriver.Chrome()
+
+try:
+    open_page(driver)
+
+    fill_form(
+        driver,
+        "Bad Email",
+        "petryandex.ru",
+        "Москва",
+        "СПб"
+    )
+
+    outputs = driver.find_elements(By.ID, "output")
+
+    assert len(outputs) == 0
+
+    print("Негативный email пройден!")
+
+finally:
+    driver.quit()
+
+
+# =========================
 # ПУСТОЙ EMAIL
 # =========================
 
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("Сергей Сергеев")
+    fill_form(
+        driver,
+        "Empty Email",
+        "",
+        "Москва",
+        "СПб"
+    )
 
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("")
+    outputs = driver.find_elements(By.ID, "output")
 
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
+    assert len(outputs) == 0
 
-    time.sleep(2)
-
-    result_box = driver.find_element(By.ID, "output")
-
-    assert result_box.text == ""
-
-    print("Негативный тест пустого email успешно пройден!")
+    print("Пустой email пройден!")
 
 finally:
     driver.quit()
 
 
 # =========================
-# НЕГАТИВНЫЙ ТЕСТ
 # SQL INJECTION
 # =========================
 
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("SQL Hacker")
+    fill_form(
+        driver,
+        "SQL Hacker",
+        "' OR 1=1 --",
+        "Москва",
+        "СПб"
+    )
 
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("' OR 1=1 --")
+    outputs = driver.find_elements(By.ID, "output")
 
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
+    assert len(outputs) == 0
 
-    time.sleep(2)
-
-    result_box = driver.find_element(By.ID, "output")
-
-    assert result_box.text == ""
-
-    print("Негативный SQL test успешно пройден!")
+    print("SQL injection тест пройден!")
 
 finally:
     driver.quit()
 
+
 # =========================
-# НЕГАТИВНЫЙ ТЕСТ
-# СПЕЦСИМВОЛЫ
+# СПЕЦСИМВОЛЫ EMAIL
 # =========================
 
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("Test User")
+    fill_form(
+        driver,
+        "User",
+        "!@#$%^&*",
+        "Москва",
+        "СПб"
+    )
 
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("!@#$%^&*")
+    outputs = driver.find_elements(By.ID, "output")
 
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
+    assert len(outputs) == 0
 
-    time.sleep(2)
-
-    result_box = driver.find_element(By.ID, "output")
-
-    assert result_box.text == ""
-
-    print("Негативный тест со спецсимволами успешно пройден!")
+    print("Спецсимволы email тест пройден!")
 
 finally:
     driver.quit()
 
 
 # =========================
-# НЕГАТИВНЫЙ ТЕСТ
 # СЛИШКОМ ДЛИННЫЙ EMAIL
 # =========================
 
 driver = webdriver.Chrome()
 
 try:
-    driver.get("https://qa-guru.github.io/one-page-form/text-box.html")
-    driver.maximize_window()
+    open_page(driver)
 
-    full_name_field = driver.find_element(By.ID, "userName")
-    full_name_field.send_keys("Long Email User")
+    long_email = "a" * 300 + "@gmail.com"
 
-    email_field = driver.find_element(By.ID, "userEmail")
-    email_field.send_keys("a" * 300 + "@gmail.com")
+    fill_form(
+        driver,
+        "Long Email",
+        long_email,
+        "Москва",
+        "СПб"
+    )
 
-    submit_button = driver.find_element(By.ID, "submit")
-    submit_button.click()
+    outputs = driver.find_elements(By.ID, "output")
 
-    time.sleep(2)
+    assert len(outputs) == 0
 
-    result_box = driver.find_element(By.ID, "output")
-
-    assert result_box.text == ""
-
-    print("Негативный тест длинного email успешно пройден!")
+    print("Длинный email тест пройден!")
 
 finally:
     driver.quit()
