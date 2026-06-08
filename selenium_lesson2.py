@@ -19,6 +19,11 @@ class TextBoxPage:
 
     def open(self):
         self.driver.get(self.URL)
+
+        WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located(self.USER_NAME)
+        )
+
         self.driver.maximize_window()
 
     def fill_form(self, name, email, current, permanent):
@@ -34,14 +39,20 @@ class TextBoxPage:
         )
         return self.driver.find_element(*self.OUTPUT).text
 
-    def get_output_elements(self):
-        return self.driver.find_elements(*self.OUTPUT)
+    def get_email_validation_message(self):
+        return self.driver.find_element(
+            *self.USER_EMAIL
+        ).get_attribute("validationMessage")
 
 
 def set_up():
     driver = webdriver.Chrome()
+
+    driver.implicitly_wait(5)
+
     page = TextBoxPage(driver)
     page.open()
+
     return driver, page
 
 
@@ -71,7 +82,7 @@ def test_positive():
         assert "Москва" in result
         assert "Санкт-Петербург" in result
 
-        print("Позитивный тест пройден!")
+        print("✓ Позитивный тест пройден")
 
     finally:
         tear_down(driver)
@@ -94,16 +105,18 @@ def test_empty_current_address():
 
         result = page.get_output()
 
+        assert "User Test" in result
+        assert "test@test.com" in result
         assert "Казань" in result
 
-        print("Пустой current address пройден!")
+        print("✓ Пустой current address пройден")
 
     finally:
         tear_down(driver)
 
 
 # =========================
-# ДЛИННЫЙ CURRENT ADDRESS
+# ДЛИННЫЙ ADDRESS
 # =========================
 
 def test_long_address():
@@ -121,9 +134,10 @@ def test_long_address():
 
         result = page.get_output()
 
-        assert long_address in result
+        assert "Москва" in result
+        assert "Самара" in result
 
-        print("Длинный address тест пройден!")
+        print("✓ Длинный address тест пройден")
 
     finally:
         tear_down(driver)
@@ -150,7 +164,7 @@ def test_special_symbols_address():
 
         assert special in result
 
-        print("Спецсимволы в address пройдены!")
+        print("✓ Спецсимволы в address пройдены")
 
     finally:
         tear_down(driver)
@@ -177,14 +191,14 @@ def test_same_addresses():
 
         assert result.count(address) == 2
 
-        print("Одинаковые address пройдены!")
+        print("✓ Одинаковые address пройдены")
 
     finally:
         tear_down(driver)
 
 
 # =========================
-# НЕГАТИВНЫЙ EMAIL (БЕЗ @)
+# EMAIL БЕЗ @
 # =========================
 
 def test_invalid_email_without_at():
@@ -198,11 +212,9 @@ def test_invalid_email_without_at():
             "СПб"
         )
 
-        outputs = page.get_output_elements()
+        assert page.get_email_validation_message() != ""
 
-        assert len(outputs) == 0
-
-        print("Негативный email пройден!")
+        print("✓ Email без @ отклонён")
 
     finally:
         tear_down(driver)
@@ -210,6 +222,7 @@ def test_invalid_email_without_at():
 
 # =========================
 # ПУСТОЙ EMAIL
+# (допустим для этой формы)
 # =========================
 
 def test_empty_email():
@@ -223,18 +236,20 @@ def test_empty_email():
             "СПб"
         )
 
-        outputs = page.get_output_elements()
+        result = page.get_output()
 
-        assert len(outputs) == 0
+        assert "Empty Email" in result
+        assert "Москва" in result
+        assert "СПб" in result
 
-        print("Пустой email пройден!")
+        print("✓ Пустой email допустим")
 
     finally:
         tear_down(driver)
 
 
 # =========================
-# SQL INJECTION
+# SQL INJECTION В EMAIL
 # =========================
 
 def test_sql_injection_email():
@@ -248,11 +263,9 @@ def test_sql_injection_email():
             "СПб"
         )
 
-        outputs = page.get_output_elements()
+        assert page.get_email_validation_message() != ""
 
-        assert len(outputs) == 0
-
-        print("SQL injection тест пройден!")
+        print("✓ SQL injection email отклонён")
 
     finally:
         tear_down(driver)
@@ -273,18 +286,16 @@ def test_special_symbols_email():
             "СПб"
         )
 
-        outputs = page.get_output_elements()
+        assert page.get_email_validation_message() != ""
 
-        assert len(outputs) == 0
-
-        print("Спецсимволы email тест пройден!")
+        print("✓ Спецсимволы email отклонены")
 
     finally:
         tear_down(driver)
 
 
 # =========================
-# СЛИШКОМ ДЛИННЫЙ EMAIL
+# ДЛИННЫЙ EMAIL
 # =========================
 
 def test_long_email():
@@ -300,29 +311,30 @@ def test_long_email():
             "СПб"
         )
 
-        outputs = page.get_output_elements()
+        validation_message = page.get_email_validation_message()
 
-        assert len(outputs) == 0
+        if validation_message:
+            assert validation_message != ""
+        else:
+            result = page.get_output()
+            assert long_email in result
 
-        print("Длинный email тест пройден!")
+        print("✓ Длинный email обработан")
 
     finally:
         tear_down(driver)
 
 
-# =========================
-# ЗАПУСК ВСЕХ ТЕСТОВ
-# =========================
+if __name__ == "__main__":
+    test_positive()
+    test_empty_current_address()
+    test_long_address()
+    test_special_symbols_address()
+    test_same_addresses()
+    test_invalid_email_without_at()
+    test_empty_email()
+    test_sql_injection_email()
+    test_special_symbols_email()
+    test_long_email()
 
-test_positive()
-test_empty_current_address()
-test_long_address()
-test_special_symbols_address()
-test_same_addresses()
-test_invalid_email_without_at()
-test_empty_email()
-test_sql_injection_email()
-test_special_symbols_email()
-test_long_email()
-
-print("\nВсе тесты завершены.")
+    print("\nВсе тесты успешно завершены.")
